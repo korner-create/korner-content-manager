@@ -47,7 +47,7 @@ with tab1:
             new_title = st.text_input('제목 (아이디어)', placeholder='예: 함부로 편의점 도시락만 먹으면 안되는 이유')
         with col2:
             new_type = st.selectbox('유형', ['롱폼', '숏폼'])
-            new_series = st.selectbox('시리즈', ['함부로 시리즈', '진짜일까?', '돈 숨기기', '멤버 대결', '챌린지', '기타'])
+            new_series = st.selectbox('시리즈', ['함부로 시리즈', '진짜일까?', '돈 숨기기', '멤버 대결', '챌린지', '실험', '트렌드', '콜라보', '요리', '여행', '상황극(애니,영화 등)', '기타'])
         with col3:
             new_memo = st.text_area('메모', placeholder='촬영 아이디어, 준비물, 참고 사항 등', height=100)
         if st.button('추가하기', type='primary'):
@@ -67,11 +67,14 @@ with tab1:
     with col_f2:
         filter_type = st.selectbox('유형 필터', ['전체', '롱폼', '숏폼'])
     with col_f3:
-        st.write('')
+        filter_series = st.selectbox('카테고리 필터', ['전체', '함부로 시리즈', '진짜일까?', '돈 숨기기', '멤버 대결', '챌린지', '실험', '트렌드', '콜라보', '요리', '여행', '상황극(애니,영화 등)', '기타'])
 
     status_arg = None if filter_status == '전체' else filter_status
     type_arg = None if filter_type == '전체' else filter_type
+    series_arg = None if filter_series == '전체' else filter_series
     ideas = get_ideas(status=status_arg, type_=type_arg)
+    if series_arg:
+        ideas = [i for i in ideas if i.get('series') == series_arg]
 
     if not ideas:
         st.info('아이디어가 없어요. 위에서 추가해보세요!')
