@@ -152,8 +152,20 @@ with tab2:
 
         # ── 잘 된 영상 ─────────────────────────────────────────
         if section == '🏆 잘 된 영상':
-            st.markdown('### 조회수 TOP 10 — 롱폼')
-            top_long = longform.nlargest(10, 'views').reset_index(drop=True)
+            sort_col1, sort_col2, sort_col3 = st.columns(3)
+            with sort_col1:
+                sort_by = st.selectbox('정렬 기준', ['조회수', '시청 지속률', 'CTR'], key='sort_by')
+            with sort_col2:
+                sort_order = st.radio('정렬 방향', ['내림차순 ↓', '오름차순 ↑'], horizontal=True, key='sort_order')
+            with sort_col3:
+                top_n = st.slider('표시 개수', 5, 30, 10, key='top_n')
+
+            sort_map = {'조회수': 'views', '시청 지속률': 'avg_view_pct', 'CTR': 'ctr'}
+            col_key = sort_map[sort_by]
+            ascending = sort_order == '오름차순 ↑'
+
+            st.markdown(f'### {sort_by} {"▲" if ascending else "▼"} TOP {top_n} — 롱폼')
+            top_long = longform.sort_values(col_key, ascending=ascending).head(top_n).reset_index(drop=True)
             for i, row in top_long.iterrows():
                 with st.container():
                     col_r, col_t, col_m1, col_m2, col_m3 = st.columns([0.3, 3.5, 1, 1, 1])
@@ -164,8 +176,9 @@ with tab2:
                     col_m3.metric('CTR', f"{row['ctr']:.1f}%")
                 st.divider()
 
-            st.markdown('### 조회수 TOP 10 — 숏폼')
-            top_short = shortform.nlargest(10, 'views').reset_index(drop=True)
+            st.markdown(f'### {sort_by} {"▲" if ascending else "▼"} TOP {top_n} — 숏폼')
+            sort_map_sf = {'조회수': 'views', '시청 지속률': 'avg_view_pct', 'CTR': 'views'}
+            top_short = shortform.sort_values(sort_map_sf.get(sort_by, 'views'), ascending=ascending).head(top_n).reset_index(drop=True)
             for i, row in top_short.iterrows():
                 with st.container():
                     col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
