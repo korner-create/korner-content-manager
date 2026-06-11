@@ -246,11 +246,34 @@ with tab3:
         st.info('아직 데이터가 없어요.')
 
     st.divider()
-    st.markdown('#### YouTube API 키 설정')
-    st.caption('API 키를 설정하면 CSV 없이도 자동으로 최신 데이터를 가져올 수 있어요.')
-    api_key_input = st.text_input('API Key', type='password', value=os.environ.get('YOUTUBE_API_KEY', ''))
-    if st.button('API 키 저장'):
-        env_path = os.path.join(os.path.dirname(__file__), '.env')
-        with open(env_path, 'w') as f:
-            f.write(f'YOUTUBE_API_KEY={api_key_input}\n')
-        st.success('저장됐어요! 앱을 재시작하면 적용돼요.')
+    st.markdown('#### YouTube API 자동 수집')
+    st.caption('API로 최신 영상 목록과 조회수를 자동으로 가져와요. (하루 할당량: 10,000유닛)')
+
+    CHANNEL_ID = 'UCYACixxri8vQLQ6BSriQehw'
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        max_results = st.slider('가져올 영상 수', 10, 200, 50, step=10)
+    with col_b:
+        st.write('')
+        st.write('')
+        if st.button('🔄 최신 데이터 가져오기', type='primary'):
+            try:
+                api_key = st.secrets.get('YOUTUBE_API_KEY', os.environ.get('YOUTUBE_API_KEY', ''))
+                if not api_key:
+                    st.error('API 키가 설정되지 않았어요.')
+                else:
+                    from youtube_api import fetch_channel_videos, fetch_video_stats
+                    import youtube_api as yt
+                    yt.API_KEY = api_key
+                    with st.spinner('YouTube에서 데이터 가져오는 중...'):
+                        video_ids = fetch_channel_videos(CHANNEL_ID, max_results=max_results)
+                        stats = fetch_video_stats(video_ids)
+                        from database import upsert_videos
+                        upsert_videos(stats)
+                    st.success(f'✅ {len(stats)}개 영상 데이터 업데이트 완료!')
+                    st.rerun()
+            except Exception as e:
+                import traceback
+                st.error(f'오류: {e}')
+                st.code(traceback.format_exc())
