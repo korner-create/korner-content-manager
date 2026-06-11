@@ -135,75 +135,194 @@ with tab2:
         st.info('데이터가 없어요. "데이터 가져오기" 탭에서 CSV를 먼저 불러오세요.')
     else:
         df = pd.DataFrame(videos)
+        longform = df[df['type'] == '롱폼'].copy()
+        shortform = df[df['type'] == '숏폼'].copy()
 
-        # 전체 요약
-        longform = df[df['type'] == '롱폼']
-        shortform = df[df['type'] == '숏폼']
-
-        st.markdown('#### 전체 요약')
+        # ── 전체 요약 ──────────────────────────────────────────
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric('총 영상', f"{len(df)}개")
+        c1.metric('총 영상', f"{len(df)}개  (롱폼 {len(longform)} / 숏폼 {len(shortform)})")
         c2.metric('총 조회수', f"{df['views'].sum()/10000:.0f}만")
-        c3.metric('총 시청 시간', f"{df['watch_hours'].sum():,.0f}h")
+        c3.metric('총 시청 시간', f"{df['watch_hours'].sum()/10000:.0f}만 시간")
         c4.metric('총 예상 수익', f"${df['revenue_usd'].sum():,.0f}")
 
-        st.markdown('#### 롱폼 vs 숏폼')
-        col1, col2 = st.columns(2)
+        st.divider()
 
-        with col1:
-            fig, ax = plt.subplots(figsize=(5, 4))
-            vals = [longform['views'].sum(), shortform['views'].sum()]
-            labels = [f'롱폼\n{vals[0]/10000:.0f}만', f'숏폼\n{vals[1]/10000:.0f}만']
-            ax.pie(vals, labels=labels, autopct='%1.1f%%',
-                   colors=['#4A90D9', '#E94B3C'], startangle=90)
-            ax.set_title('조회수 비율')
-            st.pyplot(fig)
-            plt.close()
+        # ── 섹션 선택 ──────────────────────────────────────────
+        section = st.radio('분석 섹션', ['🏆 잘 된 영상', '📺 롱폼 인사이트', '⚡ 숏폼 인사이트', '🔍 롱폼 vs 숏폼'], horizontal=True)
 
-        with col2:
-            fig, ax = plt.subplots(figsize=(5, 4))
-            metrics = ['롱폼', '숏폼']
-            views = [longform['views'].sum()/10000, shortform['views'].sum()/10000]
-            ax.bar(metrics, views, color=['#4A90D9', '#E94B3C'])
-            ax.set_ylabel('조회수 (만)')
-            ax.set_title('유형별 총 조회수')
-            for i, v in enumerate(views):
-                ax.text(i, v + 5, f'{v:.0f}만', ha='center', fontsize=10)
-            st.pyplot(fig)
-            plt.close()
+        # ── 잘 된 영상 ─────────────────────────────────────────
+        if section == '🏆 잘 된 영상':
+            st.markdown('### 조회수 TOP 10 — 롱폼')
+            top_long = longform.nlargest(10, 'views').reset_index(drop=True)
+            for i, row in top_long.iterrows():
+                with st.container():
+                    col_r, col_t, col_m1, col_m2, col_m3 = st.columns([0.3, 3.5, 1, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
+                    col_m2.metric('시청 지속률', f"{row['avg_view_pct']:.1f}%")
+                    col_m3.metric('CTR', f"{row['ctr']:.1f}%")
+                st.divider()
 
-        # 롱폼 TOP 15
-        st.markdown('#### 롱폼 TOP 15 (조회수)')
-        top_long = longform.nlargest(15, 'views')[['title', 'views', 'avg_view_pct', 'ctr', 'subscribers']].copy()
-        top_long.columns = ['제목', '조회수', '평균조회율(%)', 'CTR(%)', '구독자증가']
-        top_long['조회수'] = top_long['조회수'].apply(lambda x: f'{x:,}')
-        st.dataframe(top_long, use_container_width=True, hide_index=True)
+            st.markdown('### 조회수 TOP 10 — 숏폼')
+            top_short = shortform.nlargest(10, 'views').reset_index(drop=True)
+            for i, row in top_short.iterrows():
+                with st.container():
+                    col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
+                    col_m2.metric('시청 지속률', f"{row['avg_view_pct']:.1f}%")
+                st.divider()
 
-        # 숏폼 TOP 15
-        st.markdown('#### 숏폼 TOP 15 (조회수)')
-        top_short = shortform.nlargest(15, 'views')[['title', 'views', 'avg_view_pct', 'subscribers']].copy()
-        top_short.columns = ['제목', '조회수', '평균조회율(%)', '구독자증가']
-        top_short['조회수'] = top_short['조회수'].apply(lambda x: f'{x:,}')
-        st.dataframe(top_short, use_container_width=True, hide_index=True)
+        # ── 롱폼 인사이트 ──────────────────────────────────────
+        elif section == '📺 롱폼 인사이트':
+            lf = longform.dropna(subset=['views', 'avg_view_pct', 'ctr'])
+            lf = lf[lf['views'] > 0]
 
-        # CTR vs 시청 지속률
-        st.markdown('#### 롱폼: CTR vs 시청 지속률')
-        lf = longform.dropna(subset=['ctr', 'avg_view_pct', 'views'])
-        lf = lf[lf['ctr'] > 0]
-        if not lf.empty:
-            fig, ax = plt.subplots(figsize=(9, 5))
-            sc = ax.scatter(lf['ctr'], lf['avg_view_pct'],
-                            c=lf['views'], cmap='YlOrRd', alpha=0.7,
-                            s=lf['views']/lf['views'].max()*300+20)
-            plt.colorbar(sc, ax=ax, label='조회수')
-            ax.axvline(lf['ctr'].median(), color='gray', linestyle='--', alpha=0.5, label='CTR 중앙값')
-            ax.axhline(lf['avg_view_pct'].median(), color='gray', linestyle=':', alpha=0.5, label='지속률 중앙값')
-            ax.set_xlabel('CTR (%)')
-            ax.set_ylabel('평균 조회율 (%)')
-            ax.set_title('CTR vs 시청 지속률  (원 크기 = 조회수)')
-            ax.legend(fontsize=9)
-            st.pyplot(fig)
-            plt.close()
+            avg_views = lf['views'].mean()
+            avg_retention = lf['avg_view_pct'].mean()
+            avg_ctr = lf['ctr'].mean()
+
+            st.markdown('### 롱폼 평균 성과')
+            c1, c2, c3 = st.columns(3)
+            c1.metric('평균 조회수', f"{avg_views/10000:.1f}만")
+            c2.metric('평균 시청 지속률', f"{avg_retention:.1f}%")
+            c3.metric('평균 CTR', f"{avg_ctr:.1f}%")
+
+            st.markdown('### 시청 지속률 TOP 10 — 끝까지 본 영상')
+            st.caption('시청자가 영상을 얼마나 끝까지 봤는지 — 높을수록 콘텐츠 완성도가 높은 것')
+            top_ret = lf[lf['views'] >= 10000].nlargest(10, 'avg_view_pct').reset_index(drop=True)
+            for i, row in top_ret.iterrows():
+                diff = row['avg_view_pct'] - avg_retention
+                arrow = '🔥' if diff >= 10 else ('📈' if diff >= 0 else '📉')
+                with st.container():
+                    col_r, col_t, col_m1, col_m2, col_m3 = st.columns([0.3, 3.5, 1, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('지속률', f"{row['avg_view_pct']:.1f}%", f"{diff:+.1f}%p")
+                    col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
+                    col_m3.markdown(f"<div style='font-size:2rem;text-align:center;padding-top:8px'>{arrow}</div>", unsafe_allow_html=True)
+                st.divider()
+
+            st.markdown('### CTR TOP 10 — 썸네일/제목이 잘 먹힌 영상')
+            st.caption('노출됐을 때 클릭한 비율 — 높을수록 제목/썸네일이 효과적인 것')
+            top_ctr = lf[lf['views'] >= 10000].nlargest(10, 'ctr').reset_index(drop=True)
+            for i, row in top_ctr.iterrows():
+                diff = row['ctr'] - avg_ctr
+                with st.container():
+                    col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('CTR', f"{row['ctr']:.1f}%", f"{diff:+.1f}%p")
+                    col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
+                st.divider()
+
+            st.markdown('### 구독자 전환율 TOP 10 — 팬을 만든 영상')
+            st.caption('조회수 대비 구독자를 가장 많이 늘린 영상')
+            lf_sub = lf[lf['views'] >= 10000].copy()
+            lf_sub['구독전환율'] = lf_sub['subscribers'] / lf_sub['views'] * 100
+            top_sub = lf_sub.nlargest(10, '구독전환율').reset_index(drop=True)
+            for i, row in top_sub.iterrows():
+                with st.container():
+                    col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('구독 전환율', f"{row['구독전환율']:.3f}%")
+                    col_m2.metric('구독자 +', f"{int(row['subscribers']):+,}명")
+                st.divider()
+
+        # ── 숏폼 인사이트 ──────────────────────────────────────
+        elif section == '⚡ 숏폼 인사이트':
+            sf = shortform.dropna(subset=['views', 'avg_view_pct'])
+            sf = sf[sf['views'] > 0]
+
+            avg_views_s = sf['views'].mean()
+            avg_ret_s = sf['avg_view_pct'].mean()
+
+            st.markdown('### 숏폼 평균 성과')
+            c1, c2, c3 = st.columns(3)
+            c1.metric('평균 조회수', f"{avg_views_s/10000:.1f}만")
+            c2.metric('평균 시청 지속률', f"{avg_ret_s:.1f}%")
+            c3.metric('100% 이상 지속률 영상', f"{len(sf[sf['avg_view_pct'] >= 100])}개")
+
+            st.markdown('### 시청 지속률 TOP 10 — 반복 시청된 영상')
+            st.caption('숏폼은 100% 이상이면 반복 시청 — 루프 구조가 잘 된 것')
+            top_sf = sf.nlargest(10, 'avg_view_pct').reset_index(drop=True)
+            for i, row in top_sf.iterrows():
+                loop = '🔁 반복시청' if row['avg_view_pct'] >= 100 else ''
+                with st.container():
+                    col_r, col_t, col_m1, col_m2, col_badge = st.columns([0.3, 3.5, 1, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('지속률', f"{row['avg_view_pct']:.1f}%")
+                    col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
+                    col_badge.markdown(f"<div style='padding-top:12px;color:#E94B3C;font-weight:bold'>{loop}</div>", unsafe_allow_html=True)
+                st.divider()
+
+            st.markdown('### 조회수 TOP 10 대비 지속률 분석')
+            st.caption('조회수가 많지만 지속률이 낮으면 — 제목은 좋았지만 내용이 기대에 못 미친 것')
+            top10_sf = sf.nlargest(10, 'views').reset_index(drop=True)
+            for i, row in top10_sf.iterrows():
+                gap = row['avg_view_pct'] - avg_ret_s
+                flag = '✅ 기대 이상' if gap >= 5 else ('⚠️ 기대 이하' if gap <= -10 else '➖ 평균')
+                with st.container():
+                    col_r, col_t, col_m1, col_m2, col_f = st.columns([0.3, 3.5, 1, 1, 1])
+                    col_r.markdown(f"**#{i+1}**")
+                    col_t.markdown(f"**{row['title']}**")
+                    col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
+                    col_m2.metric('지속률', f"{row['avg_view_pct']:.1f}%", f"{gap:+.1f}%p")
+                    col_f.markdown(f"<div style='padding-top:12px;font-weight:bold'>{flag}</div>", unsafe_allow_html=True)
+                st.divider()
+
+        # ── 롱폼 vs 숏폼 비교 ─────────────────────────────────
+        elif section == '🔍 롱폼 vs 숏폼':
+            st.markdown('### 채널 기여도 비교')
+
+            metrics = {
+                '조회수': (longform['views'].sum(), shortform['views'].sum(), '만', 10000),
+                '시청 시간': (longform['watch_hours'].sum(), shortform['watch_hours'].sum(), '만h', 10000),
+                '구독자 증가': (longform['subscribers'].sum(), shortform['subscribers'].sum(), '명', 1),
+                '예상 수익': (longform['revenue_usd'].sum(), shortform['revenue_usd'].sum(), '$', 1),
+            }
+
+            for label, (lv, sv, unit, div) in metrics.items():
+                total = lv + sv if (lv + sv) > 0 else 1
+                l_pct = lv / total * 100
+                s_pct = sv / total * 100
+                st.markdown(f"**{label}**")
+                col_l, col_bar, col_r = st.columns([1.5, 5, 1.5])
+                col_l.markdown(f"<div style='text-align:right;color:#4A90D9'>롱폼<br><b>{lv/div:,.0f}{unit}</b> ({l_pct:.0f}%)</div>", unsafe_allow_html=True)
+                col_bar.markdown(
+                    f"<div style='background:#4A90D9;width:{l_pct:.0f}%;height:24px;display:inline-block;border-radius:4px 0 0 4px'></div>"
+                    f"<div style='background:#E94B3C;width:{s_pct:.0f}%;height:24px;display:inline-block;border-radius:0 4px 4px 0'></div>",
+                    unsafe_allow_html=True
+                )
+                col_r.markdown(f"<div style='color:#E94B3C'>숏폼<br><b>{sv/div:,.0f}{unit}</b> ({s_pct:.0f}%)</div>", unsafe_allow_html=True)
+                st.write('')
+
+            st.divider()
+            st.markdown('### 핵심 인사이트')
+            lf_rpm = longform['revenue_usd'].sum() / (longform['views'].sum() / 1000) if longform['views'].sum() > 0 else 0
+            sf_rpm = shortform['revenue_usd'].sum() / (shortform['views'].sum() / 1000) if shortform['views'].sum() > 0 else 0
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"""
+**📺 롱폼**
+- RPM: **${lf_rpm:.2f}** / 1000회
+- 평균 지속률: **{longform['avg_view_pct'].mean():.1f}%**
+- 평균 CTR: **{longform['ctr'].mean():.1f}%**
+- 구독자 기여: **{longform['subscribers'].sum():,}명**
+""")
+            with col2:
+                st.info(f"""
+**⚡ 숏폼**
+- RPM: **${sf_rpm:.2f}** / 1000회
+- 평균 지속률: **{shortform['avg_view_pct'].mean():.1f}%**
+- 구독자 기여: **{shortform['subscribers'].sum():,}명**
+- 롱폼 대비 RPM: **{sf_rpm/lf_rpm*100:.0f}%** 수준
+""" if lf_rpm > 0 else "숏폼 데이터 집계 중")
 
 # ════════════════════════════════════════════════════════════════
 # TAB 3 — 데이터 가져오기
