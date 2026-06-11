@@ -65,6 +65,15 @@ def upsert_videos(rows):
     for i in range(0, len(clean_rows), 50):
         sb.table('videos').upsert(clean_rows[i:i+50], on_conflict='video_id').execute()
 
+def get_trend_keywords(month):
+    sb = get_client()
+    res = sb.table('trend_calendar').select('*').eq('month', month).execute()
+    return res.data[0] if res.data else None
+
+def upsert_trend_keywords(month, keywords, events):
+    sb = get_client()
+    sb.table('trend_calendar').upsert({'month': month, 'keywords': keywords, 'events': events}, on_conflict='month').execute()
+
 def get_videos(type_=None, limit=50):
     sb = get_client()
     q = sb.table('videos').select('*')

@@ -525,10 +525,11 @@ with tab3:
 # ════════════════════════════════════════════════════════════════
 with tab4:
     import datetime
+    from database import get_trend_keywords, upsert_trend_keywords
     st.subheader('📅 트렌드 캘린더')
     st.caption('월별 시즌 키워드와 기념일을 참고해 트렌드 콘텐츠를 기획하세요.')
 
-    TREND_DATA = {
+    TREND_DEFAULT = {
         1:  {'emoji': '🎍', 'season': '겨울 / 새해', 'keywords': ['새해 결심', '설날', '떡국', '세뱃돈', '겨울 스포츠', '핫초코', '온천'], 'events': ['신정(1/1)', '설날']},
         2:  {'emoji': '❄️', 'season': '겨울 / 졸업', 'keywords': ['졸업', '발렌타인데이', '눈썰매', '겨울 캠핑', '따뜻한 음식', '고백'], 'events': ['발렌타인데이(2/14)', '졸업 시즌']},
         3:  {'emoji': '🌸', 'season': '봄 / 개학', 'keywords': ['벚꽃', '입학', '봄나들이', '꽃구경', '소풍', '봄 패션', '알레르기'], 'events': ['삼일절(3/1)', '화이트데이(3/14)', '개학']},
@@ -545,37 +546,76 @@ with tab4:
 
     now_month = datetime.datetime.now().month
 
-    # 이번 달 강조
-    today = TREND_DATA[now_month]
-    st.markdown(f"## {today['emoji']} 이번 달 ({now_month}월) — {today['season']}")
-    kw_cols = st.columns(len(today['keywords']))
-    for i, kw in enumerate(today['keywords']):
-        with kw_cols[i]:
-            if st.button(f"+ {kw}", key=f"today_kw_{i}"):
-                add_idea(f"[트렌드] {kw}", '롱폼', '트렌드', f"{now_month}월 트렌드 키워드")
+    def get_month_data(month):
+        saved = get_trend_keywords(month)
+        default = TREND_DEFAULT[month]
+        if saved:
+            return {**default, 'keywords': saved['keywords'], 'events': saved['events']}
+        return default
+
+    # 월 선택
+    selected_month = st.selectbox('월 선택', list(range(1, 13)),
+        format_func=lambda m: f"{TREND_DEFAULT[m]['emoji']} {m}월 — {TREND_DEFAULT[m]['season']}" + (' 👈 이번 달' if m == now_month else ''),
+        index=now_month - 1)
+
+    data = get_month_data(selected_month)
+    is_current = selected_month == now_month
+
+    st.markdown(f"## {data['emoji']} {selected_month}월 — {data['season']}" + (' 👈 이번 달' if is_current else ''))
+
+    # 키워드 섹션
+    st.markdown('### 🏷️ 키워드')
+    kw_cols = st.columns(min(len(data['keywords']), 5))
+    for i, kw in enumerate(data['keywords']):
+        with kw_cols[i % 5]:
+            if st.button(f"➕ {kw}", key=f"kw_add_{selected_month}_{i}"):
+                add_idea(f"[트렌드] {kw}", '롱폼', '트렌드', f"{selected_month}월 트렌드 키워드")
                 st.success(f'"{kw}" 기획 뱅크에 추가됐어요!')
-    st.caption(f"🗓️ 주요 기념일: {' / '.join(today['events'])}")
 
     st.divider()
 
-    # 전체 월 캘린더
-    st.markdown('### 연간 트렌드 캘린더')
-    for row_start in range(1, 13, 3):
-        cols = st.columns(3)
-        for col_idx, month in enumerate(range(row_start, min(row_start + 3, 13))):
-            data = TREND_DATA[month]
-            is_current = month == now_month
-            with cols[col_idx]:
-                border = "border:2px solid #E94B3C;border-radius:8px;padding:12px;" if is_current else "border:1px solid #333;border-radius:8px;padding:12px;"
-                st.markdown(f"<div style='{border}'>", unsafe_allow_html=True)
-                st.markdown(f"**{data['emoji']} {month}월 — {data['season']}**" + (" 👈 이번 달" if is_current else ""))
-                st.caption(' / '.join(data['events']))
-                for kw in data['keywords']:
-                    if st.button(f"+ {kw}", key=f"kw_{month}_{kw}"):
-                        add_idea(f"[트렌드] {kw}", '롱폼', '트렌드', f"{month}월 트렌드 키워드")
-                        st.success(f'"{kw}" 기획 뱅크에 추가됐어요!')
-                st.markdown("</div>", unsafe_allow_html=True)
-        st.write('')
+    # 편집 섹션
+    with st.expander('✏️ 키워드 / 기념일 수정'):
+        edit_kw_key = f'edit_kw_{selected_month}'
+        edit_ev_key = f'edit_ev_{selected_month}'
+
+        if edit_kw_key not in st.session_state:
+            st.session_state[edit_kw_key] = data['keywords'].copy()
+        if edit_ev_key not in st.session_state:
+            st.session_state[edit_ev_key] = data['events'].copy()
+
+        st.markdown('**키워드 수정**')
+        for ki in range(len(st.session_state[edit_kw_key])):
+            c1, c2 = st.columns([5, 1])
+            st.session_state[edit_kw_key][ki] = c1.text_input('', value=st.session_state[edit_kw_key][ki], key=f"ekw_{selected_month}_{ki}", label_visibility='collapsed')
+            if c2.button('🗑️', key=f"delkw_{selected_month}_{ki}"):
+                st.session_state[edit_kw_key].pop(ki)
+                st.rerun()
+
+        new_kw = st.text_input('새 키워드 추가', placeholder='키워드 입력 후 Enter', key=f"newkw_{selected_month}")
+        if st.button('➕ 키워드 추가', key=f"addkw_{selected_month}"):
+            if new_kw.strip():
+                st.session_state[edit_kw_key].append(new_kw.strip())
+                st.rerun()
+
+        st.markdown('**기념일 수정**')
+        for ei in range(len(st.session_state[edit_ev_key])):
+            c1, c2 = st.columns([5, 1])
+            st.session_state[edit_ev_key][ei] = c1.text_input('', value=st.session_state[edit_ev_key][ei], key=f"eev_{selected_month}_{ei}", label_visibility='collapsed')
+            if c2.button('🗑️', key=f"delev_{selected_month}_{ei}"):
+                st.session_state[edit_ev_key].pop(ei)
+                st.rerun()
+
+        new_ev = st.text_input('새 기념일 추가', placeholder='예: 어버이날(5/8)', key=f"newev_{selected_month}")
+        if st.button('➕ 기념일 추가', key=f"addev_{selected_month}"):
+            if new_ev.strip():
+                st.session_state[edit_ev_key].append(new_ev.strip())
+                st.rerun()
+
+        if st.button('💾 저장', key=f"save_trend_{selected_month}", type='primary'):
+            upsert_trend_keywords(selected_month, st.session_state[edit_kw_key], st.session_state[edit_ev_key])
+            st.success('저장됐어요!')
+            st.rerun()
 
 # TAB 5 — 데이터 가져오기
 # ════════════════════════════════════════════════════════════════
