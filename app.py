@@ -216,17 +216,21 @@ with tab3:
 
     uploaded = st.file_uploader('표 데이터.csv 선택', type='csv')
     if uploaded:
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv', mode='wb') as tmp:
-            tmp.write(uploaded.read())
-            tmp_path = tmp.name
-        try:
-            count = import_from_csv(tmp_path)
-            st.success(f'✅ {count}개 영상 데이터가 저장됐어요!')
-        except Exception as e:
-            st.error(f'오류: {e}')
-        finally:
-            os.unlink(tmp_path)
+        if st.button('📥 데이터 저장하기', type='primary'):
+            import tempfile, traceback
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.csv', mode='wb') as tmp:
+                tmp.write(uploaded.read())
+                tmp_path = tmp.name
+            try:
+                with st.spinner('저장 중...'):
+                    count = import_from_csv(tmp_path)
+                st.success(f'✅ {count}개 영상 데이터가 저장됐어요!')
+                st.rerun()
+            except Exception as e:
+                st.error(f'오류: {e}')
+                st.code(traceback.format_exc())
+            finally:
+                os.unlink(tmp_path)
 
     st.divider()
     st.markdown('#### 저장된 데이터 현황')
