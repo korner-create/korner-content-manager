@@ -37,6 +37,10 @@ def get_ideas(status=None, type_=None):
     res = q.order('created_at', desc=True).execute()
     return res.data
 
+def update_idea_plan(idea_id, plan_dict):
+    sb = get_client()
+    sb.table('ideas').update({'plan': plan_dict}).eq('id', idea_id).execute()
+
 def update_idea_status(idea_id, status):
     sb = get_client()
     sb.table('ideas').update({'status': status}).eq('id', idea_id).execute()

@@ -6,7 +6,7 @@ import matplotlib.font_manager as fm
 import os, sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from database import init_db, add_idea, get_ideas, update_idea_status, delete_idea, get_videos
+from database import init_db, add_idea, get_ideas, update_idea_status, delete_idea, get_videos, update_idea_plan
 from youtube_api import import_from_csv
 
 # ── 초기화 ───────────────────────────────────────────────────────
@@ -111,6 +111,72 @@ with tab1:
                     if st.button('🗑️', key=f"del_{idea['id']}", help='삭제'):
                         delete_idea(idea['id'])
                         st.rerun()
+
+                # 기획서
+                saved_plan = idea.get('plan') or {}
+                has_plan = bool(saved_plan.get('intent') or saved_plan.get('flow'))
+                label = '📋 기획서 보기/수정' if has_plan else '📋 기획서 작성'
+                with st.expander(label):
+                    st.markdown('#### 기획 정보')
+                    pc1, pc2 = st.columns(2)
+                    with pc1:
+                        intent = st.text_area('기획 의도', value=saved_plan.get('intent', ''), placeholder='왜 이 영상을 찍는가', key=f"intent_{idea['id']}", height=80)
+                        reaction = st.text_area('핵심 반응 포인트', value=saved_plan.get('reaction_points', ''), placeholder='시청자가 어디서 반응할지', key=f"reaction_{idea['id']}", height=80)
+                        titles = st.text_area('예상 제목 후보', value=saved_plan.get('title_candidates', ''), placeholder='예: 제목1\n예: 제목2', key=f"titles_{idea['id']}", height=80)
+                        thumbnail = st.text_area('썸네일 아이디어', value=saved_plan.get('thumbnail_idea', ''), placeholder='어떤 장면/표정/텍스트', key=f"thumb_{idea['id']}", height=80)
+                    with pc2:
+                        prep = st.text_area('촬영 준비물', value=saved_plan.get('prep', ''), placeholder='장소, 소품, 출연자', key=f"prep_{idea['id']}", height=80)
+                        edit_pts = st.text_area('편집 포인트', value=saved_plan.get('edit_points', ''), placeholder='강조할 장면, 자막 스타일', key=f"edit_{idea['id']}", height=80)
+                        ref = st.text_area('참고 영상', value=saved_plan.get('reference', ''), placeholder='URL 또는 설명', key=f"ref_{idea['id']}", height=80)
+
+                    st.markdown('#### 🎬 영상 흐름')
+                    flow_key = f"flow_{idea['id']}"
+                    if flow_key not in st.session_state:
+                        st.session_state[flow_key] = saved_plan.get('flow', [
+                            {'scene': '오프닝 훅', 'description': '첫 5초 — 시청자를 잡는 장면'},
+                            {'scene': '도입', 'description': '상황/규칙 설명'},
+                            {'scene': '전개 1', 'description': ''},
+                            {'scene': '전개 2', 'description': ''},
+                            {'scene': '클라이맥스', 'description': '핵심 반응/결과'},
+                            {'scene': '마무리', 'description': '구독 유도, 다음 영상 연결'},
+                        ])
+
+                    flows = st.session_state[flow_key]
+                    fh1, fh2, fh3 = st.columns([0.4, 2, 4])
+                    fh1.caption('순서')
+                    fh2.caption('장면')
+                    fh3.caption('설명')
+                    for fi in range(len(flows)):
+                        fc1, fc2, fc3 = st.columns([0.4, 2, 4])
+                        fc1.markdown(f"**{fi+1}**")
+                        flows[fi]['scene'] = fc2.text_input('장면', value=flows[fi]['scene'], key=f"fscene_{idea['id']}_{fi}", label_visibility='collapsed')
+                        flows[fi]['description'] = fc3.text_input('설명', value=flows[fi]['description'], key=f"fdesc_{idea['id']}_{fi}", label_visibility='collapsed')
+
+                    btn1, btn2, btn3 = st.columns(3)
+                    with btn1:
+                        if st.button('➕ 장면 추가', key=f"addflow_{idea['id']}"):
+                            st.session_state[flow_key].append({'scene': '', 'description': ''})
+                            st.rerun()
+                    with btn2:
+                        if len(flows) > 1 and st.button('➖ 마지막 삭제', key=f"delflow_{idea['id']}"):
+                            st.session_state[flow_key].pop()
+                            st.rerun()
+                    with btn3:
+                        if st.button('💾 기획서 저장', key=f"saveplan_{idea['id']}", type='primary'):
+                            plan_data = {
+                                'intent': intent,
+                                'reaction_points': reaction,
+                                'title_candidates': titles,
+                                'thumbnail_idea': thumbnail,
+                                'prep': prep,
+                                'edit_points': edit_pts,
+                                'reference': ref,
+                                'flow': st.session_state[flow_key],
+                            }
+                            update_idea_plan(idea['id'], plan_data)
+                            st.success('기획서가 저장됐어요!')
+                            st.rerun()
+
                 st.divider()
 
     # 상태별 요약
