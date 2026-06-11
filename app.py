@@ -418,7 +418,7 @@ with tab3:
                                     for m in st.session_state.chat_history]
                         response = client.messages.create(
                             model='claude-sonnet-4-6',
-                            max_tokens=1024,
+                            max_tokens=2048,
                             system=channel_context,
                             messages=messages
                         )
