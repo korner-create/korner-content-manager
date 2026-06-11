@@ -236,7 +236,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2, col_m3 = st.columns([0.3, 3.5, 1, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.1rem;font-weight:600;padding-top:12px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
                     col_m2.metric('시청 지속률', f"{row['avg_view_pct']:.1f}%")
                     col_m3.metric('CTR', f"{row['ctr']:.1f}%")
@@ -249,7 +249,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.1rem;font-weight:600;padding-top:12px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
                     col_m2.metric('시청 지속률', f"{row['avg_view_pct']:.1f}%")
                 st.divider()
