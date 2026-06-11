@@ -46,9 +46,20 @@ def delete_idea(idea_id):
     sb.table('ideas').delete().eq('id', idea_id).execute()
 
 def upsert_videos(rows):
+    import math
     sb = get_client()
+    clean_rows = []
     for r in rows:
-        sb.table('videos').upsert(r, on_conflict='video_id').execute()
+        clean = {}
+        for k, v in r.items():
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                clean[k] = None
+            else:
+                clean[k] = v
+        clean_rows.append(clean)
+    # 50개씩 배치로 저장
+    for i in range(0, len(clean_rows), 50):
+        sb.table('videos').upsert(clean_rows[i:i+50], on_conflict='video_id').execute()
 
 def get_videos(type_=None, limit=50):
     sb = get_client()
