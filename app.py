@@ -278,7 +278,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2, col_m3 = st.columns([0.3, 3.5, 1, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.6rem;font-weight:600;padding-top:4px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('지속률', f"{row['avg_view_pct']:.1f}%", f"{diff:+.1f}%p")
                     col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
                     col_m3.markdown(f"<div style='font-size:2rem;text-align:center;padding-top:8px'>{arrow}</div>", unsafe_allow_html=True)
@@ -292,7 +292,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.6rem;font-weight:600;padding-top:4px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('CTR', f"{row['ctr']:.1f}%", f"{diff:+.1f}%p")
                     col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
                 st.divider()
@@ -306,7 +306,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2 = st.columns([0.3, 4, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.6rem;font-weight:600;padding-top:4px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('구독 전환율', f"{row['구독전환율']:.3f}%")
                     col_m2.metric('구독자 +', f"{int(row['subscribers']):+,}명")
                 st.divider()
@@ -333,7 +333,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2, col_badge = st.columns([0.3, 3.5, 1, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.6rem;font-weight:600;padding-top:4px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('지속률', f"{row['avg_view_pct']:.1f}%")
                     col_m2.metric('조회수', f"{row['views']/10000:.1f}만")
                     col_badge.markdown(f"<div style='padding-top:12px;color:#E94B3C;font-weight:bold'>{loop}</div>", unsafe_allow_html=True)
@@ -348,7 +348,7 @@ with tab2:
                 with st.container():
                     col_r, col_t, col_m1, col_m2, col_f = st.columns([0.3, 3.5, 1, 1, 1])
                     col_r.markdown(f"**#{i+1}**")
-                    col_t.markdown(f"**{row['title']}**")
+                    col_t.markdown(f"<div style='font-size:1.6rem;font-weight:600;padding-top:4px'>{row['title']}</div>", unsafe_allow_html=True)
                     col_m1.metric('조회수', f"{row['views']/10000:.1f}만")
                     col_m2.metric('지속률', f"{row['avg_view_pct']:.1f}%", f"{gap:+.1f}%p")
                     col_f.markdown(f"<div style='padding-top:12px;font-weight:bold'>{flag}</div>", unsafe_allow_html=True)
