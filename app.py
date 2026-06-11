@@ -32,7 +32,7 @@ st.set_page_config(
 
 st.title('🎬 코너 콘텐츠 매니저')
 
-tab1, tab2, tab3, tab4 = st.tabs(['💡 기획 뱅크', '📊 채널 분석', '🤖 AI 분석', '⬆️ 데이터 가져오기'])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(['💡 기획 뱅크', '📊 채널 분석', '🤖 AI 분석', '📅 트렌드 캘린더', '⬆️ 데이터 가져오기'])
 
 # ════════════════════════════════════════════════════════════════
 # TAB 1 — 기획 뱅크
@@ -521,9 +521,65 @@ with tab3:
                 st.caption('오른쪽 상단 복사 아이콘을 클릭하세요.')
                 st.code(chat_text, language=None)
 
-# TAB 4 — 데이터 가져오기
+# TAB 4 — 트렌드 캘린더
 # ════════════════════════════════════════════════════════════════
 with tab4:
+    import datetime
+    st.subheader('📅 트렌드 캘린더')
+    st.caption('월별 시즌 키워드와 기념일을 참고해 트렌드 콘텐츠를 기획하세요.')
+
+    TREND_DATA = {
+        1:  {'emoji': '🎍', 'season': '겨울 / 새해', 'keywords': ['새해 결심', '설날', '떡국', '세뱃돈', '겨울 스포츠', '핫초코', '온천'], 'events': ['신정(1/1)', '설날']},
+        2:  {'emoji': '❄️', 'season': '겨울 / 졸업', 'keywords': ['졸업', '발렌타인데이', '눈썰매', '겨울 캠핑', '따뜻한 음식', '고백'], 'events': ['발렌타인데이(2/14)', '졸업 시즌']},
+        3:  {'emoji': '🌸', 'season': '봄 / 개학', 'keywords': ['벚꽃', '입학', '봄나들이', '꽃구경', '소풍', '봄 패션', '알레르기'], 'events': ['삼일절(3/1)', '화이트데이(3/14)', '개학']},
+        4:  {'emoji': '🌼', 'season': '봄 / 야외활동', 'keywords': ['꽃놀이', '캠핑', '봄 요리', '자전거', '피크닉', '텃밭', '봄비'], 'events': ['식목일(4/5)', '어린이날 D-30']},
+        5:  {'emoji': '🌿', 'season': '봄 / 가정의 달', 'keywords': ['어린이날', '어버이날', '스승의날', '가족 여행', '바베큐', '카네이션', '선물'], 'events': ['어린이날(5/5)', '어버이날(5/8)', '스승의날(5/15)']},
+        6:  {'emoji': '☀️', 'season': '초여름 / 장마', 'keywords': ['장마', '우산', '실내활동', '현충일', '여름 준비', '에어컨', '냉면'], 'events': ['현충일(6/6)', '장마 시작']},
+        7:  {'emoji': '🏖️', 'season': '여름 / 휴가', 'keywords': ['여름', '갯벌', '바다', '빠지', '한강', '수박', '아이스크림', '물놀이', '캠핑'], 'events': ['여름 휴가철', '7월 말 여름방학']},
+        8:  {'emoji': '🌊', 'season': '여름 / 방학', 'keywords': ['방학', '워터파크', '해수욕장', '서핑', '계곡', '불꽃놀이', '열대야', '빙수'], 'events': ['광복절(8/15)', '여름방학']},
+        9:  {'emoji': '🍂', 'season': '가을 / 추석', 'keywords': ['추석', '송편', '성묘', '단풍', '고구마', '밤', '가을 소풍', '독서'], 'events': ['추석', '추분']},
+        10: {'emoji': '🎃', 'season': '가을 / 핼러윈', 'keywords': ['핼러윈', '단풍 구경', '가을 캠핑', '고기', '코스튬', '공포', '축제'], 'events': ['핼러윈(10/31)', '한글날(10/9)']},
+        11: {'emoji': '🍁', 'season': '초겨울 / 수능', 'keywords': ['수능', '수험생', '붕어빵', '첫눈', '빼빼로', '김장', '연말 준비'], 'events': ['수능', '빼빼로데이(11/11)']},
+        12: {'emoji': '🎄', 'season': '겨울 / 연말', 'keywords': ['크리스마스', '연말 결산', '송년회', '선물', '캐럴', '눈사람', '핫초코', '새해 카운트다운'], 'events': ['크리스마스(12/25)', '연말']},
+    }
+
+    now_month = datetime.datetime.now().month
+
+    # 이번 달 강조
+    today = TREND_DATA[now_month]
+    st.markdown(f"## {today['emoji']} 이번 달 ({now_month}월) — {today['season']}")
+    kw_cols = st.columns(len(today['keywords']))
+    for i, kw in enumerate(today['keywords']):
+        with kw_cols[i]:
+            if st.button(f"+ {kw}", key=f"today_kw_{i}"):
+                add_idea(f"[트렌드] {kw}", '롱폼', '트렌드', f"{now_month}월 트렌드 키워드")
+                st.success(f'"{kw}" 기획 뱅크에 추가됐어요!')
+    st.caption(f"🗓️ 주요 기념일: {' / '.join(today['events'])}")
+
+    st.divider()
+
+    # 전체 월 캘린더
+    st.markdown('### 연간 트렌드 캘린더')
+    for row_start in range(1, 13, 3):
+        cols = st.columns(3)
+        for col_idx, month in enumerate(range(row_start, min(row_start + 3, 13))):
+            data = TREND_DATA[month]
+            is_current = month == now_month
+            with cols[col_idx]:
+                border = "border:2px solid #E94B3C;border-radius:8px;padding:12px;" if is_current else "border:1px solid #333;border-radius:8px;padding:12px;"
+                st.markdown(f"<div style='{border}'>", unsafe_allow_html=True)
+                st.markdown(f"**{data['emoji']} {month}월 — {data['season']}**" + (" 👈 이번 달" if is_current else ""))
+                st.caption(' / '.join(data['events']))
+                for kw in data['keywords']:
+                    if st.button(f"+ {kw}", key=f"kw_{month}_{kw}"):
+                        add_idea(f"[트렌드] {kw}", '롱폼', '트렌드', f"{month}월 트렌드 키워드")
+                        st.success(f'"{kw}" 기획 뱅크에 추가됐어요!')
+                st.markdown("</div>", unsafe_allow_html=True)
+        st.write('')
+
+# TAB 5 — 데이터 가져오기
+# ════════════════════════════════════════════════════════════════
+with tab5:
     st.subheader('⬆️ 데이터 가져오기')
 
     st.markdown('#### YouTube Studio CSV 업로드')
