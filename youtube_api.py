@@ -52,7 +52,7 @@ def fetch_video_stats(video_ids):
             results.append({
                 'video_id': item['id'],
                 'title': item['snippet']['title'],
-                'type': '숏폼' if sec <= 60 else '롱폼',
+                'type': '숏폼' if sec <= 180 else '롱폼',
                 'published_at': item['snippet']['publishedAt'][:10],
                 'duration_sec': sec,
                 'views': int(stats.get('viewCount', 0)),
@@ -108,7 +108,7 @@ def import_from_csv(csv_path):
         rows.append({
             'video_id': row['콘텐츠'],
             'title': row.get('동영상 제목', ''),
-            'type': '숏폼' if sec <= 60 else '롱폼',
+            'type': '숏폼' if sec <= 180 else '롱폼',
             'published_at': str(row.get('동영상 게시 시간', '')),
             'duration_sec': sec,
             'views': safe_int(row.get('조회수')),
