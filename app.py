@@ -501,9 +501,22 @@ with tab3:
             st.rerun()
 
         if st.session_state.chat_history:
-            if st.button('대화 초기화', key='clear_chat'):
-                st.session_state.chat_history = []
-                st.rerun()
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button('대화 초기화', key='clear_chat'):
+                    st.session_state.chat_history = []
+                    st.rerun()
+            with btn_col2:
+                if st.button('📋 대화 내용 보기/복사', key='show_chat_text'):
+                    st.session_state['show_chat_copy'] = not st.session_state.get('show_chat_copy', False)
+
+            if st.session_state.get('show_chat_copy'):
+                chat_text = '\n\n'.join([
+                    f"{'나' if m['role'] == 'user' else 'AI'}: {m['content']}"
+                    for m in st.session_state.chat_history
+                ])
+                st.caption('오른쪽 상단 복사 아이콘을 클릭하세요.')
+                st.code(chat_text, language=None)
 
 # TAB 4 — 데이터 가져오기
 # ════════════════════════════════════════════════════════════════
