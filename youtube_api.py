@@ -91,6 +91,7 @@ def safe_float(val):
 def import_from_csv(csv_path):
     """YouTube Studio CSV에서 영상 데이터를 DB로 가져오기"""
     df = pd.read_csv(csv_path, encoding='utf-8')
+    df = df.where(pd.notnull(df), None)
     df.columns = df.columns.str.strip()
     df = df[df['콘텐츠'].notna() & (df['콘텐츠'] != '합계')].copy()
 
