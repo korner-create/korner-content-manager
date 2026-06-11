@@ -32,7 +32,7 @@ st.set_page_config(
 
 st.title('🎬 코너 콘텐츠 매니저')
 
-tab1, tab2, tab3 = st.tabs(['💡 기획 뱅크', '📊 채널 분석', '⬆️ 데이터 가져오기'])
+tab1, tab2, tab3, tab4 = st.tabs(['💡 기획 뱅크', '📊 채널 분석', '🤖 AI 분석', '⬆️ 데이터 가져오기'])
 
 # ════════════════════════════════════════════════════════════════
 # TAB 1 — 기획 뱅크
@@ -338,9 +338,110 @@ with tab2:
 """ if lf_rpm > 0 else "숏폼 데이터 집계 중")
 
 # ════════════════════════════════════════════════════════════════
-# TAB 3 — 데이터 가져오기
+# ════════════════════════════════════════════════════════════════
+# TAB 3 — AI 분석
 # ════════════════════════════════════════════════════════════════
 with tab3:
+    st.subheader('🤖 AI 채널 분석')
+    st.caption('채널 데이터를 기반으로 Claude와 콘텐츠 전략을 논의해보세요.')
+
+    videos_for_ai = get_videos(limit=500)
+
+    if not videos_for_ai:
+        st.info('데이터가 없어요. "데이터 가져오기" 탭에서 CSV를 먼저 불러오세요.')
+    else:
+        df_ai = pd.DataFrame(videos_for_ai)
+        lf_ai = df_ai[df_ai['type'] == '롱폼']
+        sf_ai = df_ai[df_ai['type'] == '숏폼']
+
+        # 채널 데이터 요약 컨텍스트 생성
+        top5_long = lf_ai.nlargest(5, 'views')[['title', 'views', 'avg_view_pct', 'ctr']].to_dict('records')
+        top5_short = sf_ai.nlargest(5, 'views')[['title', 'views', 'avg_view_pct']].to_dict('records')
+        top5_retention = lf_ai[lf_ai['views'] >= 10000].nlargest(5, 'avg_view_pct')[['title', 'avg_view_pct']].to_dict('records')
+
+        channel_context = f"""
+당신은 유튜브 채널 '코너Korner'의 콘텐츠 전략 어드바이저입니다.
+아래는 최근 1년간 채널 데이터입니다. 이 데이터를 기반으로 질문에 답하세요.
+
+[채널 개요]
+- 총 영상: {len(df_ai)}개 (롱폼 {len(lf_ai)}개 / 숏폼 {len(sf_ai)}개)
+- 총 조회수: {df_ai['views'].sum()/10000:.0f}만회
+- 롱폼 평균 CTR: {lf_ai['ctr'].mean():.1f}%
+- 롱폼 평균 시청 지속률: {lf_ai['avg_view_pct'].mean():.1f}%
+- 숏폼 평균 시청 지속률: {sf_ai['avg_view_pct'].mean():.1f}%
+
+[롱폼 조회수 TOP 5]
+{chr(10).join([f"- {r['title']}: {r['views']/10000:.0f}만뷰 | 지속률 {r['avg_view_pct']:.1f}% | CTR {r['ctr']:.1f}%" for r in top5_long])}
+
+[숏폼 조회수 TOP 5]
+{chr(10).join([f"- {r['title']}: {r['views']/10000:.0f}만뷰 | 지속률 {r['avg_view_pct']:.1f}%" for r in top5_short])}
+
+[롱폼 시청 지속률 TOP 5 (시청자가 끝까지 본 영상)]
+{chr(10).join([f"- {r['title']}: {r['avg_view_pct']:.1f}%" for r in top5_retention])}
+
+한국어로 답변하세요. 데이터 근거를 들어 구체적으로 답변하세요.
+"""
+
+        # 채팅 히스토리 초기화
+        if 'chat_history' not in st.session_state:
+            st.session_state.chat_history = []
+
+        # 빠른 질문 버튼
+        st.markdown('**빠른 질문:**')
+        q_cols = st.columns(3)
+        quick_questions = [
+            '다음에 어떤 롱폼 영상을 찍으면 좋을까요?',
+            '숏폼과 롱폼 중 어디에 더 집중해야 할까요?',
+            '시청 지속률을 높이려면 어떻게 해야 할까요?',
+        ]
+        for i, q in enumerate(quick_questions):
+            if q_cols[i].button(q, key=f'quick_{i}'):
+                st.session_state.chat_history.append({'role': 'user', 'content': q})
+                st.rerun()
+
+        st.divider()
+
+        # 채팅 히스토리 표시
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg['role']):
+                st.markdown(msg['content'])
+
+        # AI 응답 생성
+        if st.session_state.chat_history and st.session_state.chat_history[-1]['role'] == 'user':
+            with st.chat_message('assistant'):
+                with st.spinner('분석 중...'):
+                    try:
+                        import anthropic
+                        api_key = st.secrets.get('ANTHROPIC_API_KEY', os.environ.get('ANTHROPIC_API_KEY', ''))
+                        client = anthropic.Anthropic(api_key=api_key)
+                        messages = [{'role': m['role'], 'content': m['content']}
+                                    for m in st.session_state.chat_history]
+                        response = client.messages.create(
+                            model='claude-sonnet-4-6',
+                            max_tokens=1024,
+                            system=channel_context,
+                            messages=messages
+                        )
+                        answer = response.content[0].text
+                        st.markdown(answer)
+                        st.session_state.chat_history.append({'role': 'assistant', 'content': answer})
+                    except Exception as e:
+                        st.error(f'오류: {e}')
+
+        # 채팅 입력
+        user_input = st.chat_input('채널 데이터에 대해 무엇이든 물어보세요...')
+        if user_input:
+            st.session_state.chat_history.append({'role': 'user', 'content': user_input})
+            st.rerun()
+
+        if st.session_state.chat_history:
+            if st.button('대화 초기화', key='clear_chat'):
+                st.session_state.chat_history = []
+                st.rerun()
+
+# TAB 4 — 데이터 가져오기
+# ════════════════════════════════════════════════════════════════
+with tab4:
     st.subheader('⬆️ 데이터 가져오기')
 
     st.markdown('#### YouTube Studio CSV 업로드')
